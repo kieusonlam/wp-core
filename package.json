@@ -1,0 +1,84 @@
+{
+  "name": "@kieusonlam/wp-core",
+  "version": "0.3.0",
+  "description": "Sequelize-based ORM for the WordPress database — read and write posts, meta, terms, options, menus, attachments, users, comments, plus shortcodes and phpass/bcrypt auth, directly from Node.js / TypeScript.",
+  "license": "MIT",
+  "author": "Lâm Kiều <rainbow.lam25@gmail.com>",
+  "homepage": "https://github.com/kieusonlam/wp-core#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kieusonlam/wp-core.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kieusonlam/wp-core/issues"
+  },
+  "keywords": [
+    "wordpress",
+    "wp",
+    "headless",
+    "headless-wordpress",
+    "sequelize",
+    "mysql",
+    "orm",
+    "typescript",
+    "nodejs",
+    "next.js"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./models": {
+      "types": "./dist/models/index.d.ts",
+      "import": "./dist/models/index.js",
+      "require": "./dist/models/index.cjs"
+    },
+    "./auth": {
+      "types": "./dist/auth/index.d.ts",
+      "import": "./dist/auth/index.js",
+      "require": "./dist/auth/index.cjs"
+    },
+    "./shortcodes": {
+      "types": "./dist/shortcodes/index.d.ts",
+      "import": "./dist/shortcodes/index.js",
+      "require": "./dist/shortcodes/index.cjs"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rimraf dist .turbo",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "sequelize": "^6.37.0",
+    "mysql2": "^3.11.0",
+    "php-serialize": "^5.0.0",
+    "phpass": "^0.1.1",
+    "bcryptjs": "^2.4.3",
+    "luxon": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.4.2",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0",
+    "rimraf": "^6.0.1"
+  }
+}
