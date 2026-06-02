@@ -1,5 +1,11 @@
 # @kieusonlam/wp-core
 
+## 0.3.2
+
+### Patch changes
+
+- **Fix: `Unknown column 'taxonomies.term_id' in 'on clause'`** when combining `.taxonomy()` filter with `.limit()`. Sequelize wraps the query in a subquery for LIMIT correctness on `belongsToMany` associations, but the resulting JOIN to the term table referenced an alias that doesn't exist in the outer scope. `.taxonomy()` now sets `subQuery: false` to bypass the wrapper.
+
 ## 0.3.0
 
 ### Minor changes

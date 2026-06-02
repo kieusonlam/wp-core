@@ -83,6 +83,13 @@ export class PostQuery<T extends Post = Post> {
   protected readonly _order: Order = [];
   protected readonly factory: (raw: PostInstance, conn: WpConnection) => T;
   protected readonly defaultType: string | null;
+  /**
+   * Set true by `.taxonomy()` — the belongsToMany filter through term_relationships
+   * is incompatible with Sequelize's default subQuery wrapping when LIMIT is also
+   * applied (results in `Unknown column 'taxonomies.term_id' in 'on clause'`).
+   * We disable subQuery wrapping in buildFindOptions when this flag is set.
+   */
+  protected _disableSubQuery = false;
 
   constructor(
     factory: (raw: PostInstance, conn: WpConnection) => T,
@@ -153,6 +160,9 @@ export class PostQuery<T extends Post = Post> {
       required: true,
       include: [{ model: Term, as: 'term', where: termWhere, required: true }],
     });
+    // belongsToMany + limit triggers a buggy subQuery wrap in Sequelize. See
+    // `_disableSubQuery` doc above.
+    this._disableSubQuery = true;
     return this;
   }
 
@@ -315,6 +325,7 @@ export class PostQuery<T extends Post = Post> {
       where,
       include: includes.length > 0 ? includes : undefined,
       order: (this._order as Array<[string, 'ASC' | 'DESC']>).length > 0 ? this._order : undefined,
+      ...(this._disableSubQuery ? { subQuery: false } : {}),
     };
   }
 
