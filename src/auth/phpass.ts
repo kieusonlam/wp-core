@@ -12,8 +12,18 @@
  * native build steps.
  */
 
+import { createHmac } from 'node:crypto';
 import phpass from 'phpass';
 import bcrypt from 'bcryptjs';
+
+/**
+ * WP ≥ 6.8 pre-hash: bcrypt has a 72-byte limit and chokes on null bytes, so
+ * WordPress first HMAC-SHA384s the (trimmed) password with the key `wp-sha384`
+ * and base64-encodes it, then bcrypts that. Matches `wp_hash_password()`.
+ */
+function wpSha384Prehash(password: string): string {
+  return createHmac('sha384', 'wp-sha384').update(password.trim()).digest('base64');
+}
 
 /** Async-friendly wrapper around phpass' callback API. */
 function phpassCheck(password: string, hash: string): Promise<boolean> {
@@ -32,11 +42,17 @@ function phpassCheck(password: string, hash: string): Promise<boolean> {
  */
 export async function verify(password: string, storedHash: string): Promise<boolean> {
   if (!storedHash) return false;
-  if (storedHash.startsWith('$2y$') || storedHash.startsWith('$2a$') || storedHash.startsWith('$2b$')) {
-    // bcrypt — normalize $2y$ → $2a$ for bcryptjs (it doesn't accept $2y$ directly)
-    const normalized = storedHash.replace(/^\$2y\$/, '$2a$');
-    return bcrypt.compare(password, normalized);
+  // WP ≥ 6.8 bcrypt: `$wp$2y$...` = bcrypt(base64(hmac_sha384(password,'wp-sha384'))).
+  // Strip the `$wp` prefix, normalize $2y$→$2a$ for bcryptjs, compare the pre-hash.
+  if (storedHash.startsWith('$wp$')) {
+    const bc = storedHash.slice(3).replace(/^\$2y\$/, '$2a$');
+    return bcrypt.compare(wpSha384Prehash(password), bc);
   }
+  // Raw bcrypt (some setups store without the WP wrapper).
+  if (storedHash.startsWith('$2y$') || storedHash.startsWith('$2a$') || storedHash.startsWith('$2b$')) {
+    return bcrypt.compare(password, storedHash.replace(/^\$2y\$/, '$2a$'));
+  }
+  // Legacy phpass portable hashes (`$P$...` / `$H$...`).
   return phpassCheck(password, storedHash);
 }
 
@@ -53,9 +69,9 @@ export function hashPhpass(password: string): Promise<string> {
   });
 }
 
-/** Hash a password using bcrypt (matches `wp_hash_password()` for WP ≥ 6.8). */
+/** Hash a password the WP ≥ 6.8 way: `$wp$` + bcrypt(base64(hmac_sha384(password))). */
 export async function hashBcrypt(password: string, rounds = 12): Promise<string> {
-  const hash = await bcrypt.hash(password, rounds);
-  // WordPress writes `$2y$` not `$2a$/$2b$`, so rewrite for max compatibility.
-  return hash.replace(/^\$2[ab]\$/, '$2y$');
+  const hash = await bcrypt.hash(wpSha384Prehash(password), rounds);
+  // WordPress writes `$2y$` (not `$2a$/$2b$`) and prefixes with `$wp`.
+  return '$wp' + hash.replace(/^\$2[ab]\$/, '$2y$');
 }

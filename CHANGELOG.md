@@ -1,5 +1,11 @@
 # @kieusonlam/wp-core
 
+## 0.4.2
+
+### Patch changes
+
+- **Fix: verify WordPress 6.8+ bcrypt passwords (`$wp$2y$…`).** WP ≥ 6.8 stores password hashes as `$wp$2y$…` — bcrypt of a base64-encoded HMAC-SHA384 pre-hash (key `wp-sha384`) of the password, to sidestep bcrypt's 72-byte limit. `verify()` previously didn't recognise the `$wp` prefix and fell through to phpass, throwing `Bad salt length`. It now handles `$wp$2y$` (pre-hash + strip prefix + compare), alongside raw bcrypt (`$2y$/$2a$/$2b$`) and legacy phpass (`$P$`). `hashBcrypt()` now also produces the correct `$wp$2y$` format.
+
 ## 0.4.1
 
 ### Patch changes
