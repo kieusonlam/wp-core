@@ -106,6 +106,24 @@ export class PostQuery<T extends Post = Post> {
     return this;
   }
 
+  /**
+   * Filter where `column` is IN `values` (`WHERE column IN (...)`).
+   * An empty array matches nothing (Sequelize emits `IN (NULL)`).
+   */
+  whereIn(column: string, values: ReadonlyArray<string | number>): this {
+    return this.where({ [column]: { [Op.in]: [...values] } } as WhereOptions);
+  }
+
+  /**
+   * Filter where `column` is NOT IN `values` (`WHERE column NOT IN (...)`).
+   * An empty array is a no-op (excludes nothing) — this avoids the SQL
+   * `NOT IN (NULL)` gotcha, which would otherwise match zero rows.
+   */
+  whereNotIn(column: string, values: ReadonlyArray<string | number>): this {
+    if (values.length === 0) return this;
+    return this.where({ [column]: { [Op.notIn]: [...values] } } as WhereOptions);
+  }
+
   /** Filter by `post_status`. */
   status(status: PostStatus | PostStatus[]): this {
     return this.where({

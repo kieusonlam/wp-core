@@ -1,5 +1,18 @@
 # @kieusonlam/wp-core
 
+## 0.4.0
+
+### Minor changes
+
+- **New: `PostQuery.whereIn(column, values)` / `.whereNotIn(column, values)`** — fluent `WHERE column IN (...)` / `NOT IN (...)` so consumers no longer need raw `Op.in`. Empty-array semantics are handled safely: `whereIn([])` matches nothing, `whereNotIn([])` is a no-op (avoids the `NOT IN (NULL)` gotcha that would otherwise match zero rows).
+
+  ```ts
+  await Post.published().whereIn('ID', [12, 34, 56]).all();
+  await Post.query().whereNotIn('post_status', ['trash', 'auto-draft']).all();
+  ```
+
+- **New: `Op` re-exported** from the package root. Import `Op` from `@kieusonlam/wp-core` instead of `sequelize` for raw `.where()` conditions (LIKE / OR / …). This drops the need for a separate `sequelize` dependency in consumers AND guarantees the same Sequelize instance the models use — a second copy makes `Op` symbols mismatch and silently drops conditions. `WhereOptions` type also re-exported.
+
 ## 0.3.2
 
 ### Patch changes

@@ -30,3 +30,12 @@ export {
   shortcodes,
 } from './shortcodes/index.js';
 export type { ShortcodeHandler, ShortcodeAttrs } from './shortcodes/index.js';
+
+// Re-export Sequelize's operator object as the escape hatch for raw `.where()`
+// conditions the fluent API doesn't cover (e.g. LIKE / OR). Consumers should
+// import `Op` from here instead of `sequelize` directly: that drops the need for
+// a separate sequelize dependency AND guarantees the same Sequelize instance the
+// models use (a second copy makes `Op` symbols mismatch → conditions silently
+// dropped).
+export { Op } from 'sequelize';
+export type { WhereOptions } from 'sequelize';
