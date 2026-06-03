@@ -1,5 +1,11 @@
 # @kieusonlam/wp-core
 
+## 0.4.1
+
+### Patch changes
+
+- **Fix: `.hasMeta()` filters now compose with `.withMeta()`.** Combining a meta filter (`.hasMeta()` — e.g. `_stock_status` / `_price` / `_sale_price`) with `.withMeta()` made both reuse the same `meta` association alias; Sequelize merged them and the filter clobbered the eager load, so every meta value other than the filtered key came back empty (product price / SKU / thumbnail all blank on in-stock-only or filtered lists). `.hasMeta()` now filters via an uncorrelated `ID IN (SELECT post_id FROM …postmeta …)` subquery, leaving `.withMeta()`'s eager load intact. Multiple `.hasMeta()` filters on different keys also compose correctly now.
+
 ## 0.4.0
 
 ### Minor changes

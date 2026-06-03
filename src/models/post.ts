@@ -22,6 +22,7 @@
 
 import {
   Op,
+  literal,
   type FindOptions,
   type WhereOptions,
   type Order,
@@ -300,48 +301,61 @@ export class PostQuery<T extends Post = Post> {
   // ----- terminal operations ----------------------------------------------
 
   protected buildFindOptions(): FindOptions {
-    const { Post: PostModel, PostMeta } = getModels(this.conn);
-    const where: WhereOptions = {};
+    const baseWhere: WhereOptions = {};
     if (this.defaultType && !this.wheres.some((w) => 'post_type' in (w as Record<string, unknown>))) {
-      Object.assign(where, { post_type: this.defaultType });
+      Object.assign(baseWhere, { post_type: this.defaultType });
     }
-    for (const w of this.wheres) Object.assign(where, w);
+    for (const w of this.wheres) Object.assign(baseWhere, w);
 
-    const includes: IncludeOptions[] = [...this._includes];
-
-    for (const m of this.metaWheres) {
-      const metaWhere: WhereOptions = { meta_key: m.key };
-      if (m.value !== undefined) {
-        const opMap: Record<MetaCompareOp, symbol | string> = {
-          '=': Op.eq,
-          '!=': Op.ne,
-          '>': Op.gt,
-          '>=': Op.gte,
-          '<': Op.lt,
-          '<=': Op.lte,
-          LIKE: Op.like,
-          'NOT LIKE': Op.notLike,
-          IN: Op.in,
-          'NOT IN': Op.notIn,
-          BETWEEN: Op.between,
-          'NOT BETWEEN': Op.notBetween,
-          EXISTS: Op.ne,
-          'NOT EXISTS': Op.eq,
-          REGEXP: Op.regexp,
-          'NOT REGEXP': Op.notRegexp,
-          RLIKE: Op.regexp,
-        };
-        const opSym = opMap[m.op];
-        metaWhere.meta_value =
-          typeof opSym === 'symbol' ? { [opSym]: m.value as never } : m.value;
-      }
-      includes.push({ model: PostMeta, as: 'meta', where: metaWhere, required: true });
+    // Meta filters → uncorrelated `ID IN (subquery on postmeta)` so they compose
+    // with `.withMeta()`, which eager-loads the full `meta` association. Using a
+    // joined `as: 'meta'` include here would collide with withMeta's include
+    // (same Sequelize alias) and clobber the loaded meta down to just the
+    // filtered key — leaving every other meta value empty. The subquery is
+    // self-contained (no outer correlation); only the `ID` key is qualified by
+    // Sequelize. Values are escaped via sequelize.escape.
+    let where: WhereOptions = baseWhere;
+    if (this.metaWheres.length > 0) {
+      const metaTable = this.conn.table('postmeta');
+      const esc = (v: unknown): string => this.conn.sequelize.escape(v as string);
+      const SQL_OP: Partial<Record<MetaCompareOp, string>> = {
+        '=': '=',
+        '!=': '!=',
+        '>': '>',
+        '>=': '>=',
+        '<': '<',
+        '<=': '<=',
+        LIKE: 'LIKE',
+        'NOT LIKE': 'NOT LIKE',
+        REGEXP: 'REGEXP',
+        'NOT REGEXP': 'NOT REGEXP',
+        RLIKE: 'REGEXP',
+      };
+      const conds = this.metaWheres.map((m): WhereOptions => {
+        let valueSql = '';
+        if (m.value !== undefined) {
+          if (m.op === 'IN' || m.op === 'NOT IN') {
+            valueSql = ` AND \`meta_value\` ${m.op} (${(m.value as unknown[]).map(esc).join(', ')})`;
+          } else if (m.op === 'BETWEEN' || m.op === 'NOT BETWEEN') {
+            const [a, b] = m.value as [unknown, unknown];
+            valueSql = ` AND \`meta_value\` ${m.op} ${esc(a)} AND ${esc(b)}`;
+          } else {
+            valueSql = ` AND \`meta_value\` ${SQL_OP[m.op] ?? '='} ${esc(m.value)}`;
+          }
+        }
+        const sub = literal(
+          `(SELECT \`post_id\` FROM \`${metaTable}\` WHERE \`meta_key\` = ${esc(m.key)}${valueSql})`,
+        );
+        const negate = m.op === 'NOT EXISTS' && m.value === undefined;
+        return { ID: { [negate ? Op.notIn : Op.in]: sub } } as WhereOptions;
+      });
+      where = { [Op.and]: [baseWhere, ...conds] };
     }
 
     return {
       ...this.options,
       where,
-      include: includes.length > 0 ? includes : undefined,
+      include: this._includes.length > 0 ? this._includes : undefined,
       order: (this._order as Array<[string, 'ASC' | 'DESC']>).length > 0 ? this._order : undefined,
       ...(this._disableSubQuery ? { subQuery: false } : {}),
     };

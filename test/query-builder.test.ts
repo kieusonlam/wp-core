@@ -65,3 +65,19 @@ describe('whereIn / whereNotIn', () => {
     expect(w.ID[Op.gt]).toBe(5);
   });
 });
+
+describe('hasMeta compose với withMeta (regression)', () => {
+  it('giữ eager-load meta (separate), lọc qua ID-subquery chứ không join alias meta', () => {
+    const q = Post.query().withMeta().hasMeta('_stock_status', 'instock');
+    const opts = (q as unknown as { buildFindOptions(): FindOptions }).buildFindOptions();
+    const includes = (opts.include ?? []) as Array<{ as?: string; separate?: boolean; where?: unknown }>;
+    const metaIncludes = includes.filter((i) => i.as === 'meta');
+    // chỉ còn include 'meta' của withMeta (separate:true), KHÔNG có include lọc kèm where
+    expect(metaIncludes).toHaveLength(1);
+    expect(metaIncludes[0].separate).toBe(true);
+    expect(metaIncludes.some((i) => i.where)).toBe(false);
+    // filter chuyển vào where dưới dạng Op.and
+    const and = (opts.where as Record<symbol, unknown>)[Op.and];
+    expect(Array.isArray(and)).toBe(true);
+  });
+});

@@ -1,6 +1,6 @@
 {
   "name": "@kieusonlam/wp-core",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Sequelize-based ORM for the WordPress database — read and write posts, meta, terms, options, menus, attachments, users, comments, plus shortcodes and phpass/bcrypt auth, directly from Node.js / TypeScript.",
   "license": "MIT",
   "author": "Lâm Kiều <rainbow.lam25@gmail.com>",
