@@ -1,8 +1,8 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, vi } from 'vitest';
 import { Sequelize, type FindOptions } from 'sequelize';
 import mysql2 from 'mysql2';
-import { registerModels } from '../src/models/register.js';
-import { setConnection, type WpConnection } from '../src/db.js';
+import { registerModels, getModels } from '../src/models/register.js';
+import { setConnection, getConnection, type WpConnection } from '../src/db.js';
 import { Post, Op } from '../src/index.js';
 
 // Dựng connection thủ công thay vì connect(): connect() dùng require('./models/
@@ -79,5 +79,17 @@ describe('hasMeta compose với withMeta (regression)', () => {
     // filter chuyển vào where dưới dạng Op.and
     const and = (opts.where as Record<symbol, unknown>)[Op.and];
     expect(Array.isArray(and)).toBe(true);
+  });
+});
+
+describe('count() distinct (regression: eager JOIN không làm phồng total)', () => {
+  it('truyền distinct:true cho Model.count → COUNT(DISTINCT ID), không đếm theo dòng JOIN', async () => {
+    const PostModel = getModels(getConnection()).Post;
+    const spy = vi.spyOn(PostModel, 'count').mockResolvedValue(7 as never);
+    const n = await Post.query().withTaxonomies(['category']).count();
+    expect(n).toBe(7);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect((spy.mock.calls[0][0] as { distinct?: boolean }).distinct).toBe(true);
+    spy.mockRestore();
   });
 });

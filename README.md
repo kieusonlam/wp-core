@@ -203,6 +203,8 @@ const { data, total, page, perPage, lastPage } =
 // }
 ```
 
+`total` (and `.count()`) count **distinct** posts even when the query eager-loads taxonomies (`.withTaxonomies()`) or filters through one — the underlying `COUNT` uses `DISTINCT` on the primary key so a `LEFT JOIN` to many term rows doesn't multiply the total. _(Fixed in 0.4.3.)_
+
 ### Instance API & response shape
 
 ```ts

@@ -1,5 +1,11 @@
 # @kieusonlam/wp-core
 
+## 0.4.3
+
+### Patch changes
+
+- **Fix: `.count()` / `.paginate().total` no longer inflated by eager JOINs.** When a query eager-loads taxonomies (`.withTaxonomies()`) or filters through one that matches several rows (`.taxonomy()`), the include is a `LEFT JOIN`; `Model.count()` without `distinct` then counted joined rows, so each post was multiplied by its number of term rows (e.g. a category of 9 products reported 36, a 265-product catalog reported 688). `count()` now passes `distinct: true` → `COUNT(DISTINCT \`ID\`)`, returning the true row count. The `data` rows of `paginate()` were always correct (they use a subquery); only `total` / `lastPage` were wrong. `.withMeta()` uses `separate: true` (a second query, not a JOIN) and was never affected.
+
 ## 0.4.2
 
 ### Patch changes

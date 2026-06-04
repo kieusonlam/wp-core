@@ -385,7 +385,13 @@ export class PostQuery<T extends Post = Post> {
   /** Count matching rows. */
   async count(): Promise<number> {
     const { Post: PostModel } = getModels(this.conn);
-    return PostModel.count(this.buildFindOptions());
+    // `distinct: true` → `COUNT(DISTINCT \`Post\`.\`ID\`)`. Without it, an eager
+    // LEFT JOIN include (e.g. `.withTaxonomies()`, or a `.taxonomy()` filter that
+    // matches multiple rows) makes Sequelize count joined rows, so each post is
+    // multiplied by its number of term rows and the total is inflated. Counting
+    // distinct primary keys returns the true row count. (`.withMeta()` uses
+    // `separate: true` — a second query, not a JOIN — so it never affected this.)
+    return PostModel.count({ ...this.buildFindOptions(), distinct: true });
   }
 
   /** Paginate. Returns `{ data, total, page, perPage, lastPage }`. */
