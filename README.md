@@ -444,6 +444,21 @@ const inds = await Taxonomy.named('industry');
 }
 ```
 
+### Term meta (WooCommerce category image, SEO, ACF, …)
+
+`wp_termmeta` is WordPress core (since 4.4): WooCommerce keeps a category's `thumbnail_id` / `display_type` there, SEO plugins store per-term title/description, themes store colours/icons, and ACF writes term-attached fields there too. `Term` exposes the same meta API as Post/User, and `Taxonomy` **delegates to its `.term`** — so a `Taxonomy` is itself a meta source:
+
+```ts
+const cat = await Category.slugInCategory('tin-tuc');   // → Taxonomy
+
+const introHtml = await cat?.getMetaAsync('cat_content'); // lazy read
+const imageId   = cat?.getMeta('thumbnail_id');           // sync (after a load)
+
+await cat?.saveMeta('cat_color', '#1f4889');              // write (UPSERT)
+```
+
+Available on `Term` / `Taxonomy`: `.getMetaAsync(key)`, `.getMeta(key)` (sync), `.meta` (sync getter), `.loadMeta()`, `.saveMeta(key, value)`, `.deleteMeta(key)`. The **first** `getMetaAsync()` loads *all* of that term's meta in one query and caches it, so reading many keys (e.g. an ACF repeater on the term) doesn't N+1. To read ACF fields attached to a term, pass the `Taxonomy` to `acfTerm()` in `@kieusonlam/wp-acf`. _(Added in 0.5.0.)_
+
 ---
 
 <a id="menus"></a>

@@ -1,5 +1,19 @@
 # @kieusonlam/wp-core
 
+## 0.5.0
+
+### Minor changes
+
+- **New: term meta on `Term` / `Taxonomy`.** `wp_termmeta` (WordPress core since 4.4) was modelled but had no high-level accessor — only `Post` and `User` did. `Term` now exposes the same meta API as Post/User: `.getMetaAsync(key)`, `.getMeta(key)`, `.meta`, `.loadMeta()`, `.saveMeta(key, value)`, `.deleteMeta(key)`. `Taxonomy` (and `Category` / `Tag`) **delegate to their `.term`**, so a `Taxonomy` is now also a `getMetaAsync`-bearing source — meaning `new Acf(taxonomy)` / `acfTerm(taxonomy)` (wp-acf ≥ 0.4.1) can read ACF fields attached to a term, and non-ACF consumers can read WooCommerce category `thumbnail_id` / `display_type`, per-term SEO, theme settings, etc.
+
+  ```ts
+  const cat = await Category.slugInCategory('tin-tuc'); // Taxonomy
+  const intro = await cat?.getMetaAsync('cat_content');
+  await cat?.saveMeta('cat_color', '#1f4889');
+  ```
+
+  The first `getMetaAsync()` on a term loads **all** of its `wp_termmeta` rows in one query, then caches — so reading many keys (e.g. an ACF repeater) does not N+1. Purely additive; no breaking changes. Released together with wp-acf 0.5.0 + wp-woocommerce 0.5.0 (peer `^0.5.0`).
+
 ## 0.4.3
 
 ### Patch changes
